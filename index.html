@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+	<head>
+		<title>Bad TV Shader for Three.js</title>
+		<meta charset='utf-8'>
+		<style>
+			body,
+			html {
+				background-color: #000;
+				margin: 0px;
+				overflow: hidden;
+				height: 100%;
+			}
+
+			.but {
+				float: left;
+				z-index: 15;
+				cursor: pointer;
+				display: block;
+				background-color: #FAFAFA;
+				width: 100px;
+				height: 100px;
+				bottom: 0;
+			}
+
+			.large {
+				width: 150px;
+				height: 50px;
+				bottom: 0;
+			}
+
+			#but-wtf {
+				position: absolute;
+				background-color: #F01100;
+				top: 30%;
+				right: 0;
+			}
+
+			#but-tag {
+				position: absolute;
+				background-color: #FF2200;
+				top: 40%;
+				right: 0;
+			}
+
+			#but-contribute {
+				position: absolute;
+				background-color: #FF3300;
+				top: 50%;
+				right: 0;
+			}
+
+			#but-about {
+				position: absolute;
+				background-color: #FF3300;
+				top: 60%;
+				right: 0;
+			}
+
+			#but-left {
+				position: absolute;
+				left: 0;
+			}
+
+			#but-right {
+				position: absolute;
+				right: 0;
+			}
+
+			#but-up {
+				/*display: none;*/
+				position: fixed;
+				left: 50%;
+				top: 0;
+			}
+
+			#but-down {
+				/*display: none;*/
+				position: fixed;
+				left: 50%;
+				bottom: 0;
+			}
+
+			#canvas-container {
+				position: absolute;
+				;
+				margin: 0;
+				padding: 0;
+				width: 100%;
+				height: 100%;
+				display: block;
+			}
+		</style>
+	</head>
+
+	<body>
+
+
+		<div id='main-container'>
+			<div class='but' id='but-up'>Up</div>
+			<div class='but' id='but-left'>Left</div>
+			<div class='but' id='but-right'>Right</div>
+			<div class='but' id='but-down'>Down</div>
+			<div class='but large' id='but-wtf'>Toggle WTF</div>
+			<div class='but large' id='but-tag'>Go Tag</div>
+			<div class='but large' id='but-contribute'>Go Contribute</div>
+			<div class='but large' id='but-about'>Go about</div>
+			<div id='canvas-container'></div>
+		</div>
+
+		<script src="lib/TweenMax.min.js"></script>
+		<script src='lib/dat.gui.min.js'></script>
+		<script src='lib/stats.min.js'></script>
+		<script src='lib/three.min.js'></script>
+		<script src='lib/postprocessing/EffectComposer.js'></script>
+		<script src='lib/postprocessing/RenderPass.js'></script>
+		<script src='lib/postprocessing/ShaderPass.js'></script>
+		<script src='lib/postprocessing/MaskPass.js'></script>
+		<script src='lib/shaders/CopyShader.js'></script>
+		<script src='lib/shaders/FilmShader.js'></script>
+		<script src='lib/shaders/RGBShiftShader.js'></script>
+		<script src='js/BadTVShader.js'></script>
+		<script src='js/StaticShader.js'></script>
+		<!-- <script src='js/events.js'></script> -->
+
+		<script>
+			const SECTION_INTRO = 'SECTION_INTRO';
+
+			const SECTION_LINK = 'SECTION_LINK';
+			const SECTION_WTF = 'SECTION_LINK';
+			const NEXT_LINK = 'NEXT_LINK';
+			const PREV_LINK = 'PREV_LINK';
+
+			const SECTION_ABOUT = 'SECTION_ABOUT';
+
+			const SECTION_TAG = 'SECTION_TAG';
+			const SECTION_SUBMIT_A_LINK = 'SECTION_SUBMIT_A_LINK';
+			const SHOW_SHARE_POP = 'SHOW_SHARE_POP';
+
+			var canvas = document.getElementById('canvas-container');
+			var camera, scene, renderer;
+			var video, videoTexture, videoMaterial;
+			var composer;
+
+			var cube;
+			var cubeGeometry;
+			var cubeQuaternion;
+			var cubeVector;
+			var faces = [
+				"1x0x0",
+				"-1x0x0",
+				"0x1x0",
+				"0x-1x0",
+				"0x0x-1",
+				"0x0x1"
+			];
+
+			var shaderTime = 0;
+			var badTVParams, badTVPass;
+			var staticParams, staticPass;
+			var rgbParams, rgbPass;
+			var filmParams, filmPass;
+			var renderPass, copyPass;
+			var gui;
+			var animDuration = 1;
+			// var pnoise, globalParams;
+			// var clock = new THREE.Clock();
+			var targetAngleObject = {
+				x: 0,
+				y: 0,
+				z: 0
+			};
+
+			var currentCubeFaceToCameraIndex = 0;
+
+			var wtf_mode = false;
+			var texture_render_function = null;
+
+			var linkBgTab = []
+			var wtfBgTab = []
+			var bgTab = []
+			var cubeToFaceAngles = []
+			var backgroundImages = []
+
+			linkBgTab[0] = '/static/images/00.jpg' // right
+			linkBgTab[1] = '/static/images/01.jpg' // left
+			linkBgTab[2] = '/static/images/02.jpg' // top
+			linkBgTab[3] = '/static/images/03.jpg' // bottom
+			linkBgTab[4] = '/static/images/04.jpg' // back
+			linkBgTab[5] = '/static/images/05.jpg' // front
+
+			var wtfBgTab = []
+			wtfBgTab[0] = '/static/wtf/WTF_dalek.mp4'
+			wtfBgTab[1] = '/static/wtf/WTF_moustache.mp4'
+			wtfBgTab[2] = '/static/wtf/WTF_regard.mp4'
+			wtfBgTab[3] = '/static/wtf/WTF_dalek.mp4'
+			wtfBgTab[4] = '/static/wtf/WTF_moustache.mp4'
+			wtfBgTab[5] = '/static/wtf/WTF_regard.mp4'
+
+			bgTab[SECTION_INTRO] = '/static/images/00.jpg'
+
+			bgTab[SECTION_LINK] = linkBgTab
+			bgTab[SECTION_WTF] = wtfBgTab
+			bgTab[SECTION_TAG] = '/static/images/07.jpg'
+
+			bgTab[SECTION_ABOUT] = '/static/images/06.jpg'
+			bgTab[SECTION_SUBMIT_A_LINK] = '/static/images/08.jpg'
+
+
+			cubeToFaceAngles[0] = [{
+				x: 0,
+				y: 90,
+				z: 0
+			}, {
+				x: 0,
+				y: -270,
+				z: 0
+			}] // right
+			cubeToFaceAngles[1] = [{
+				x: 0,
+				y: -90,
+				z: 0
+			}, {
+				x: 0,
+				y: 270,
+				z: 0
+			}] // left
+			cubeToFaceAngles[2] = [{
+				x: -90,
+				y: 0,
+				z: 0
+			}] // top
+			cubeToFaceAngles[3] = [{
+				x: 90,
+				y: 0,
+				z: 0
+			}] // bottom
+			cubeToFaceAngles[4] = [{
+				x: 0,
+				y: 180,
+				z: 0
+			}, {
+				x: 0,
+				y: -180,
+				z: 0
+			}] // back
+			cubeToFaceAngles[5] = [{
+				x: 0,
+				y: 0,
+				z: 0
+			}, {
+				x: 0,
+				y: -360,
+				z: 0
+			}] // front
+
+			var imageLinkTextures = [];
+			var videoWtfTextures = [];
+			var cubeMaterials = [];
+
+			var otherMaterial = new THREE.MeshLambertMaterial({
+				color: 0xdddddd,
+				shading: THREE.FlatShading
+			});
+
+			init(this.linkBgTab, this.wtfBgTab, this.document);
+
+			render();
+
+			function init(imageAssets, videoAssets, parentDocument) {
+				var aspect = canvas.clientWidth / canvas.clientHeight;
+				var dist = 800 + canvas.clientWidth / 2;
+				var fov = 2 * Math.atan((canvas.clientHeight / aspect) / (1 * dist)) * (180 / Math.PI);
+
+				console.log(canvas.clientHeight, canvas.clientWidth, dist, fov);
+				// var fov = 2 * Math.atan( canvas.clientHeight / ( 2 * cubeDist ) ) * ( 180 / Math.PI ); // in degrees
+				// camera = new THREE.PerspectiveCamera(fov, aspect, 1, 10000);
+				camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientWidth, 1, 3000);
+				camera.position.z = -dist;
+				scene = new THREE.Scene();
+				var axisHelper = new THREE.AxisHelper(200);
+				scene.add(axisHelper);
+
+				// image materials
+				for (let i = 0; i < imageAssets.length; i++) {
+					var imgTexture = new THREE.TextureLoader().load(imageAssets[i])
+					this.imageLinkTextures.push(imgTexture)
+					//on prépare l'affichage par défaut du cube avec des matériaux image
+					this.cubeMaterials.push(new THREE.MeshBasicMaterial({
+						map: imgTexture
+					}))
+				}
+
+				// video materials
+				for (let i = 0; i < videoAssets.length; i++) {
+					// Load Video
+					// console.log(parentWindow)
+					this.video = parentDocument.createElement('video');
+					this.video.loop = true;
+
+					// let's declare this later and specify src during the run to spare bandwidth
+					this.video.src = videoAssets[i];
+					this.video.play();
+
+					// init video texture
+					var videoTexture = new THREE.Texture(this.video);
+
+					// this.videoWtfTextures.push({video: this.video, texture: this.videoTexture});
+
+					videoTexture.minFilter = THREE.LinearFilter;
+					videoTexture.magFilter = THREE.LinearFilter;
+					this.videoWtfTextures.push(videoTexture)
+				}
+
+				// by default load image materials
+				var cubeSidesMaterial = new THREE.MultiMaterial(this.cubeMaterials);
+
+				// create cube Mesh
+				cubeGeometry = new THREE.BoxBufferGeometry(canvas.clientWidth, canvas.clientHeight, canvas.clientWidth, 1, 1, 1);
+				cubeGeometry.center();
+				cube = new THREE.Mesh(cubeGeometry, cubeSidesMaterial);
+				cube.originalMaterials = this.cubeMaterials.slice(0);
+
+				cubeQuaternion = new THREE.Quaternion();
+				cubeQuaternion.setFromRotationMatrix(cube.matrix);
+				cubeVector = (new THREE.Vector3(0, 0, 1)).applyQuaternion(cubeQuaternion);
+				// cube.visible = false;
+
+				scene.add(cube);
+
+				// turn camera to face the cube
+				camera.lookAt(cube.position);
+
+				// we set angleObject initial value
+				cube.angleObject = {
+					x: cube.rotation.x,
+					y: cube.rotation.y,
+					z: cube.rotation.z
+				}
+				// we set initial face to camera index var
+				cube.currentCubeFaceToCameraIndex = getNextCubeFaceIndexToCameraFromAngleObject(AO2Degrees({
+					x: cube.angleObject.x,
+					y: cube.angleObject.y,
+					z: cube.angleObject.z
+				}), false, true, false);
+
+				console.log('current face to camera index :', cube.currentCubeFaceToCameraIndex)
+
+				//add stats
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				canvas.appendChild(stats.domElement);
+
+				//init renderer
+				// console.log(canvas);
+				renderer = new THREE.WebGLRenderer({
+					antialias: true
+				});
+				renderer.setSize(800, 600);
+				document.body.appendChild(renderer.domElement);
+
+
+
+				window.addEventListener('resize', onResize, false);
+
+				window.addEventListener('keyup', keyPressed, false);
+
+				document.getElementById('but-right').addEventListener('click', goRight.bind(this), false);
+				document.getElementById('but-left').addEventListener('click', goLeft, false);
+				document.getElementById('but-up').addEventListener('click', goUp, false);
+				document.getElementById('but-down').addEventListener('click', goDown, false);
+				document.getElementById('but-wtf').addEventListener('click', toggleWTF.bind(this), false);
+				document.getElementById('but-tag').addEventListener('click', goTag.bind(this), false);
+				document.getElementById('but-contribute').addEventListener('click', goContribute.bind(this), false);
+				document.getElementById('but-about').addEventListener('click', goAbout.bind(this), false);
+
+				// canvas.addEventListener('click', changeBG, false);
+				onResize();
+			}
+
+
+			function render() {
+				requestAnimationFrame(render);
+
+				// try this http://stackoverflow.com/questions/27933990/how-to-get-closest-faces-of-cubegeometry-with-three-js
+				// https://scottbyrns.atlassian.net/wiki/display/THREEJS/How+to+Fit+Camera+to+Object
+				// http://stackoverflow.com/questions/31768185/three-js-good-z-distance-of-camera-for-full-view-of-box
+
+				if (texture_render_function != null) texture_render_function();
+				stats.update();
+				renderer.render(scene, camera);
+			}
+
+			function renderVideoTextures() {
+				console.log('this.cube.material', this.cube.material)
+				console.log('this.cube.material.materials', this.cube.material.materials)
+				console.log('this.cube.angleObject', this.cube.angleObject)
+				this.cube.currentCubeFaceToCameraIndex = getNextCubeFaceIndexToCameraFromAngleObject(AO2Degrees(this.cube.angleObject), false, true, false)
+				if (this.cube.currentCubeFaceToCameraIndex != null) {
+					for (let i = 0; i < this.videoWtfTextures.length; i++) {
+						if (this.cube.material.materials && this.cube.material.materials.length)  {
+
+							if (this.cube.material.materials[this.cube.currentCubeFaceToCameraIndex].map === this.videoWtfTextures[i]) {
+								// si pas de src pour la texture vidéo alors on le précise et on lance le chargement par play()
+								console.log(this)
+								console.log(this.videoWtfTextures[i])
+								if (!this.videoWtfTextures[i].image.src) {
+									this.videoWtfTextures[i].image.src = this.wtfBgTab[this.cube.currentCubeFaceToCameraIndex]
+									this.videoWtfTextures[i].image.play();
+								}
+								// si la texture vidéo est suffisament chargée on demande son rendu
+								if (this.videoWtfTextures[i].image.readyState === 4 /*video.HAVE_ENOUGH_DATA*/ ) {
+									// on demande a re rendre la texture
+									this.videoWtfTextures[i].needsUpdate = true;
+								}
+							}
+						}
+					}
+				} else {
+					console.log('can\'t determine wich face of the cube is or will be face to camera, cannot render video texture')
+					// this.texture_render_function = null
+				}
+			}
+
+			function onResize() {
+				console.log('onResize')
+				renderer.setSize(window.innerWidth, window.innerHeight);
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+			}
+
+			function moveCube(cubeMesh, angleObject) {
+				console.log('moveCube', angleObject, AO2Degrees(angleObject))
+
+				cubeMesh.angleObject = angleObject
+
+				cubeMesh.currentCubeFaceToCameraIndex = getNextCubeFaceIndexToCameraFromAngleObject(AO2Degrees(angleObject), false, true, false)
+
+				TweenMax.to(cubeMesh.position, animDuration / 2, {
+					z: 200,
+					// easing: Power3.easeOut,
+					onUpdate: function() {}
+				});
+				TweenMax.to(cubeMesh.position, animDuration / 2, {
+					z: 0,
+					delay: animDuration / 2,
+					// easing: Power3.easeOut,
+					onUpdate: function() {}
+				});
+
+				if (targetAngleObject.x != cubeMesh.rotation.x && targetAngleObject.x) {
+					cubeMesh.rotation.x = targetAngleObject.x;
+				}
+				if (targetAngleObject.y != cubeMesh.rotation.y && targetAngleObject.y) {
+					cubeMesh.rotation.y = targetAngleObject.y;
+				}
+				if (targetAngleObject.z != cubeMesh.rotation.z && targetAngleObject.z) {
+					cubeMesh.rotation.z = targetAngleObject.z;
+				}
+
+				cube.angleObject = targetAngleObject = angleObject;
+
+				// console.log("angle X CIBLE en degrés : ", targetAngleObject.x * (180 / Math.PI))
+				// console.log("angle Y CIBLE en degrés : ", targetAngleObject.y * (180 / Math.PI))
+				// console.log("angle Z CIBLE en degrés : ", targetAngleObject.z * (180 / Math.PI))
+				TweenMax.to(cubeMesh.rotation, animDuration, {
+					x: targetAngleObject.x,
+					y: targetAngleObject.y,
+					z: targetAngleObject.z,
+					easing: Power3.easeOut,
+					overwrite: 2,
+					onUpdate: function() {
+						// console.log("angle x REEL en degrés : ", cubeMesh.rotation.x * (180 / Math.PI))
+						// console.log("angle y REEL en degrés : ", cubeMesh.rotation.y * (180 / Math.PI))
+						// console.log("angle z REEL en degrés : ", cubeMesh.rotation.z * (180 / Math.PI))
+					},
+					onComplete: function() {
+						cubeMesh.rotation.x = targetAngleObject.x = targetAngleObject.x % (2 * Math.PI);
+						cubeMesh.rotation.y = targetAngleObject.y = targetAngleObject.y % (2 * Math.PI);
+						cubeMesh.rotation.z = targetAngleObject.z = targetAngleObject.z % (2 * Math.PI);
+						// coloriseClosestFaceToCamera(cube, camera)
+					}
+				});
+			}
+
+			function getNextCubeFaceIndexToCameraFromAngleObject(o, checkX = true, checkY = true, checkZ = true) {
+				console.log('getNextCubeFaceIndexToCameraFromAngleObject')
+				var res = null;
+				if (cubeToFaceAngles && cubeToFaceAngles.length) {
+					cubeToFaceAngles.forEach(function(item, i) {
+						item.forEach(function(angleObject) {
+							if (checkX) {
+								if (o.x === angleObject.x) {
+									res = i;
+								}
+							}
+							if (checkY) {
+								if (o.y === angleObject.y) {
+									res = i;
+								}
+							}
+							if (checkZ) {
+								if (o.z === angleObject.z) {
+									res = i;
+								}
+							}
+						})
+					})
+				}
+				console.log(res)
+				return res
+			}
+
+			function applyWTFTextures(cubeMesh) {
+				cubeMaterials.forEach(function(material, index) {
+					material.map = videoWtfTextures[index]
+					videoWtfTextures[index].needsUpdate = true;
+				})
+			}
+
+			function applyLinksTextures(cubeMesh) {
+				cubeMaterials.forEach(function(material, index) {
+					material.map = imageLinkTextures[index]
+					imageLinkTextures[index].needsUpdate = true;
+				})
+			}
+
+			function applyImgTextureToFace(cubeMesh, faceIndex, texture) {
+				cubeMesh.material.materials[faceIndex].map = texture
+				texture.needsUpdate = true
+			}
+
+			function toggleWTF() {
+				console.log('toggleWTF', this)
+				if (!this.wtf_mode) {
+					// on charge les textures vidéo sur l'objet
+					applyWTFTextures(this.cube);
+					// on ajouter la gestion du render des vidéos au rendu global
+					this.texture_render_function = this.renderVideoTextures
+					this.wtf_mode = true
+				} else {
+					// on charge les textures vidéo sur l'objet
+					applyLinksTextures(this.cube)
+					// on ajouter la gestion du render des vidéos au rendu global
+					this.texture_render_function = null
+					this.wtf_mode = false
+				}
+			}
+
+			function goTag() {
+				goSection(SECTION_TAG)
+			}
+
+			function goContribute() {
+				goSection(SECTION_SUBMIT_A_LINK)
+			}
+
+			function goAbout() {
+				goSection(SECTION_ABOUT)
+			}
+
+			function goSection(section) {
+				var angle = {
+					//actual target angle + 90°
+					x: targetAngleObject.x,
+					y: (targetAngleObject.y - 90 * Math.PI / 180),
+					z: targetAngleObject.z
+				}
+				var nextFaceIndex = getNextCubeFaceIndexToCameraFromAngleObject(AO2Degrees(angle), false, true, false)
+				cube.material.materials[nextFaceIndex].map = new THREE.TextureLoader().load(bgTab[section])
+				cube.material.materials[nextFaceIndex].map.needsUpdate = true;
+				moveCube(cube, angle)
+			}
+
+			function goDown() {
+				var angle = {
+					//actual target angle + 90°
+					x: (targetAngleObject.x + 90 * Math.PI / 180),
+					y: targetAngleObject.y,
+					z: targetAngleObject.z
+				}
+				moveCube(cube, angle);
+
+			}
+
+			function goUp() {
+				var angle = {
+					//actual target angle + 90°
+					x: (targetAngleObject.x - 90 * Math.PI / 180),
+					y: targetAngleObject.y,
+					z: targetAngleObject.z
+				}
+				moveCube(cube, angle);
+			}
+
+			function goRight() {
+				var angle = {
+					//actual target angle + 90°
+					x: (targetAngleObject.x),
+					y: (targetAngleObject.y - 90 * Math.PI / 180),
+					z: targetAngleObject.z
+				}
+				moveCube(cube, angle);
+			}
+
+			function goLeft() {
+				var angle = {
+					//actual target angle + 90°
+					x: (targetAngleObject.x),
+					y: (targetAngleObject.y + 90 * Math.PI / 180),
+					z: targetAngleObject.z
+				}
+				moveCube(cube, angle);
+			}
+
+			function keyPressed(key) {
+				switch (key.which) {
+					case 37:
+						this.goLeft()
+						break
+					case 39:
+						this.goRight()
+						break
+					case 38:
+						this.goUp()
+						break
+					case 40:
+						this.goDown()
+						break
+					case 32:
+						this.toggleWTF()
+						break
+					default:
+				}
+			}
+
+			function AO2Degrees(o) {
+				var no = {};
+				no.x = o.x * 180 / Math.PI;
+				no.y = o.y * 180 / Math.PI;
+				no.z = o.z * 180 / Math.PI;
+				return no;
+			}
+
+			function changeTexture() {
+				cube.material.materials.forEach(function(material) {
+					material.map = cube.material.materials[0].map;
+
+				})
+				cube.material.needsUpdate = true;
+
+				// cube.material.map = THREE.ImageUtils.loadTexture( src );
+				// cube.material.needsUpdate = true;
+			}
+		</script>
+	</body>
+
+</html>

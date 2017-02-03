@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="61px" viewBox="0 0 24 61" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+    <!-- Generator: Sketch 3.4.1 (15681) - http://www.bohemiancoding.com/sketch -->
+    <title>mouse_svg</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+        <g id="scroll" sketch:type="MSLayerGroup" fill="#FFFFFF">
+            <g id="mouse-svg-path">
+              <path d="M11.9,0.8 C5.8,0.8 0.7,5.8 0.7,12 L0.7,23.2 C0.7,29.4 5.7,34.4 11.9,34.4 C18.1,34.4 23.1,29.4 23.1,23.2 L23.1,12 C23.1,5.8 18.1,0.8 11.9,0.8 L11.9,0.8 Z M21.9,23.2 C21.9,28.7 17.4,33.2 11.9,33.1 C6.4,33.1 2,28.6 2,23.2 L2,12 C2,6.5 6.5,2 12,2.1 C17.5,2.1 21.9,6.6 21.9,12 L21.9,23.2 L21.9,23.2 L21.9,23.2 Z M11.9,6.5 C11.6,6.5 11.3,6.8 11.3,7.1 L11.3,7.1 L11.3,12.7 C11.3,13 11.6,13.3 11.9,13.3 C12.2,13.3 12.5,13 12.5,12.7 L12.5,12.7 L12.5,7.1 C12.6,6.8 12.3,6.5 11.9,6.5 L11.9,6.5 L11.9,6.5 Z" id="Shape" sketch:type="MSShapeGroup"></path>
+            </g>
+            <circle id="oval-1" sketch:type="MSShapeGroup" cx="11.8999999" cy="44.9000008" r="1.20000005"></circle>
+            <circle id="oval-2" sketch:type="MSShapeGroup" cx="11.8999999" cy="51.9999993" r="1.20000005"></circle>
+            <circle id="oval-3" sketch:type="MSShapeGroup" cx="11.8999999" cy="58.9999993" r="1.20000005"></circle>
+        </g>
+    </g>
+</svg>
